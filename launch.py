@@ -26,12 +26,72 @@ class Pomidor:
         ("19:00", "20:00"),  # ужин + старт офлайн-зоны
     ]
 
+    breaks_dict = {
+        'weekend': [
+            # Утро: 25/5
+            ("00:15", "00:20"), ("00:35", "00:40"), ("00:55", "01:00"),
+            ("01:15", "01:20"), ("01:35", "01:40"), ("01:55", "02:00"),
+            ("02:15", "02:20"), ("02:35", "02:40"), ("02:55", "03:00"),
+            ("03:15", "03:20"), ("03:35", "03:40"), ("03:55", "04:00"),
+            ("04:15", "04:20"), ("04:35", "04:40"), ("04:55", "05:00"),
+            ("05:15", "05:20"), ("05:35", "05:40"), ("05:55", "06:00"),
+            ("06:15", "06:20"), ("06:35", "06:40"), ("06:55", "07:00"),
+            ("07:15", "07:20"), ("07:35", "07:40"), ("07:55", "08:00"),
+            ("08:15", "08:20"), ("08:35", "08:40"), ("08:55", "09:00"),
+            ("09:25", "09:30"), ("09:55", "10:00"),
+            ("10:25", "10:30"), ("10:55", "11:00"),
+            ("11:25", "11:30"), ("11:55", "12:00"),
+
+            # День: 50/10 + обед
+            ("12:50", "14:00"),  # перерыв + обед
+
+            ("14:50", "15:00"),
+            ("15:50", "16:00"),
+            ("16:55", "17:00"),  # короткий разгоняющий перерыв
+            ("18:00", "18:30"),  # переход на лёгкие задачи
+
+            # Вечер
+            ("19:00", "20:00"),  # ужин + старт офлайн-зоны
+            ("20:55", "21:00"),
+            ("21:55", "22:00"),
+            ("22:55", "23:00"),
+            ("23:55", "00:00"),
+        ],
+        'weekday': [
+            # Утро: 25/5
+            ("00:15", "00:20"), ("00:35", "00:40"), ("00:55", "01:00"),
+            ("01:15", "01:20"), ("01:35", "01:40"), ("01:55", "02:00"),
+            ("02:15", "02:20"), ("02:35", "02:40"), ("02:55", "03:00"),
+            ("03:15", "03:20"), ("03:35", "03:40"), ("03:55", "04:00"),
+            ("04:15", "04:20"), ("04:35", "04:40"), ("04:55", "05:00"),
+            ("05:15", "05:20"), ("05:35", "05:40"), ("05:55", "06:00"),
+            ("06:15", "06:20"), ("06:35", "06:40"), ("06:55", "07:00"),
+            ("07:15", "07:20"), ("07:35", "07:40"), ("07:55", "08:00"),
+            ("08:15", "08:20"), ("08:35", "08:40"), ("08:55", "09:00"),
+
+            ("09:25", "09:30"), ("09:55", "10:00"),
+            ("10:25", "10:30"), ("10:55", "11:00"),
+            ("11:25", "11:30"), ("11:55", "12:00"),
+            ("12:30", "14:00"),
+            ("14:50", "15:00"),
+            ("15:50", "16:00"),
+            ("16:50", "17:00"),  # короткий разгоняющий перерыв
+            ("17:50", "18:00"),  # переход на лёгкие задачи
+            ("18:30", "20:00"),  # переход на лёгкие задачи
+            ("20:55", "21:00"),
+            ("21:55", "22:00"),
+            ("22:55", "23:00"),
+            ("23:55", "00:00"),
+        ],
+    }
+    poweeroff_timer = [
+        ('21:00', '22:00')
+    ]
     def to_dt(self, s):
-        return datetime.strptime(s, "%H:%M")
+        return self.to_zero_day(datetime.strptime(s, "%H:%M"))
 
     def __init__(self):
-        self.weekend_breaks = [list(map(self.to_dt,  break_times)) for break_times in self.weekend_breaks]
-        self.break_schelder = self.make_break_schelder()
+        # self.weekend_breaks = [list(map(self.to_dt,  break_times)) for break_times in self.weekend_breaks]
         self.is_work = True
         self.dt = 1
         # self.off_screen = 'swaymsg "output DP-1 dpms off"'
@@ -69,95 +129,52 @@ class Pomidor:
         date = date.replace(day=1, month=1,year=2000)
         return date
 
-    def make_break_schelder(self):
-        today = datetime.now()
-        today = self.to_zero_day(today)
-        today = today.replace(hour=0, minute=0, second=0, microsecond=0)
-        hour = timedelta(hours=1)
-        five = timedelta(minutes=5)
-        half = timedelta(minutes=30)
-        twenty_five = half - five
-        schelder = []
-        
-        twenty_five_count = 24
-        fourty_five_count = 6
-        hour_count = int(24 - twenty_five_count*.5 - 6)
-        # 25
-        for _ in range(twenty_five_count):
-            today += twenty_five
-            start_break = today
-            today += five
-            end_break = today
-            schelder.append((start_break, end_break))
-        
-        fours = timedelta(minutes=15)
-        four_five = hour - fours
-        # 45
-        for _ in range(fourty_five_count):
-            today += four_five
-            start_break = today
-            today += fours
-            end_break = today
-            schelder.append((start_break, end_break))
-        one = timedelta(minutes=1)
-        withoutone = hour - one
-        for _ in range(hour_count):
-            today += withoutone
-            start_break = today
-            today += one
-            end_break = today
-            schelder.append((start_break, end_break))
-        
-        
-        eda_start = today.replace(hour=13, minute=0)
-        eda_end = today.replace(hour=14, minute=0)
-        schelder.append((eda_start, eda_end))
-
-        eda_start = today.replace(hour=19, minute=0)
-        eda_end = today.replace(hour=20, minute=0)
-        schelder.append((eda_start, eda_end))
-        
-        forma = '%H:%M:%S'
-        for i, delta in enumerate(schelder):
-            print(f"{delta[0].strftime(forma)} -> {delta[1].strftime(forma)}")
-            if i + 1 in (twenty_five_count, twenty_five_count+fourty_five_count, len(schelder) - 2):
-                print()
-        
-        return schelder
-
     def is_break_time(self, delta):
         now = datetime.now()
         now = self.to_zero_day(now)
-        delta = tuple(map(self.to_zero_day, delta))
+        # print(f"{delta = }")
+        delta = tuple(map(self.to_dt, delta))
         is_break = delta[0] <= now < delta[1] 
         return is_break
 
-    def is_weekend(self):
+    def what_day_type(self):
         now = datetime.now()
         day_of_week = now.weekday()
         res = day_of_week >= 5
-        return res
+        day_type = 'weekend' if res else 'weekday'
+        print(f"{day_type = }")
+        return day_type
+
+    def is_power_off_time(self):
+        for delta in self.poweeroff_timer:
+            if self.is_break_time(delta):
+                return True
+        else:
+            return False
 
     def run(self):
-        schedule = self.weekend_breaks if self.is_weekend() else self.break_schelder
+        schedule = self.breaks_dict[self.what_day_type()]
         while True:
             for delta in schedule:
+                print(delta)
                 if self.is_break_time(delta):
                     self.system_break()
                     break
                 sleep(self.dt)
             else:
                 self.system_work()
-            sleep(self.dt)
+            sleep(10*self.dt)
+            if self.is_power_off_time():
+                os.system('poweroff')
 
 def test_swaymsg():
     P = Pomidor()
     off_screen = P.off_screen
     on_screen = P.on_screen
     print(f"{off_screen = }")
-    sleep(3)
+    sleep(1)
     os.system(off_screen)
-    sleep(5)
+    sleep(2)
     os.system(on_screen)
 
 def text_schelder():
@@ -165,7 +182,7 @@ def text_schelder():
     Ogurec.make_break_schelder()
 
 def work():
-    test_swaymsg()
+    # test_swaymsg()
     with open('/home/user/Files/Pomos/log', 'w') as f:
         f.write(f"POMODORO START at {datetime.now()}")
     print("POMODORO START")
