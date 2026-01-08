@@ -3,9 +3,6 @@ import os
 from time import sleep
 import subprocess
 
-
-
-
 class Pomidor:
     breaks_dict = {
         'weekday': [
@@ -29,14 +26,21 @@ class Pomidor:
             ("12:30", "14:00"),
             ("14:50", "15:00"),
             ("15:50", "16:00"),
-            ("16:30", "17:00"), # спорт
+            ("16:30", "17:00"),
             ("17:50", "18:00"),
             ("18:30", "19:00"),
         ],
     }
-    # poweeroff_timer = [
-    #     ('21:00', '22:00')
-    # ]
+    discord_blocks = [
+        ('00:00', '12:30')
+    ]
+
+    hosts_path = "/etc/hosts"
+    redirect = "127.0.0.1"
+    websites = ["discord.com", "www.discord.com", "gateway.discord.gg", "cdn.discordapp.com"]
+
+    discord_is_blocked = False
+
     def to_dt(self, s):
         return self.to_zero_day(datetime.strptime(s, "%H:%M"))
 
@@ -68,12 +72,15 @@ class Pomidor:
             print("time to work")
             self.is_work = True
             os.system(self.on_screen)
+            sleep(19*60)
+
 
     def system_break(self):
         if self.is_work:
             print("time to break")
             self.is_work = False
             os.system(self.off_screen)
+            sleep(4*60)
         
     def to_zero_day(self, date):
         date = date.replace(day=1, month=1,year=2000)
@@ -115,9 +122,46 @@ class Pomidor:
                 sleep(self.dt)
             else:
                 self.system_work()
-            sleep(30)
-            # if self.is_power_off_time():
-            #     os.system('poweroff')
+            for delta in self.discord_blocks:
+                print(delta)
+                if self.is_break_time(delta):
+                    self.block_discord()
+                    break
+                sleep(self.dt)
+            else:
+                self.unblock_discord()            
+            sleep(self.dt)
+
+    def block_discord(self):
+        if self.discord_is_blocked:
+            return
+        block_discorddiscord_is_blocked = True
+        try:
+            with open(self.hosts_path, 'r+') as file:
+                content = file.read()
+                for website in self.websites:
+                    if website not in content:
+                        file.write(f"{self.redirect} {website}\n")
+            print("Discord успешно заблокирован.")
+        except PermissionError:
+            print("Ошибка: Запустите скрипт через sudo (sudo python3 script.py)")
+
+    def unblock_discord(self):
+        if not self.discord_is_blocked:
+            return
+        self.discord_is_blocked = False
+        try:
+            with open(self.hosts_path, 'r') as file:
+                lines = file.readlines()
+            
+            with open(self.hosts_path, 'w') as file:
+                for line in lines:
+                    # Сохраняем только те строки, которые не содержат домены Discord
+                    if not any(self.website in line for website in self.websites):
+                        file.write(line)
+            print("Discord разблокирован.")
+        except PermissionError:
+            print("Ошибка: Запустите скрипт через sudo.")
 
 def test_swaymsg():
     P = Pomidor()

@@ -1,1 +1,2 @@
-POMODORO START at 2025-08-19 10:16:59.139454
+POMODORO START at 2026-01-08 14:17:35.870731 
+ command = 'xrandr --output DP-0 --off'
