@@ -133,9 +133,10 @@ class Pomidor:
             sleep(self.dt)
 
     def block_discord(self):
+        os.system("pkill -9 discord")
         if self.discord_is_blocked:
             return
-        block_discorddiscord_is_blocked = True
+        self.discord_is_blocked = True
         try:
             with open(self.hosts_path, 'r+') as file:
                 content = file.read()
@@ -184,7 +185,12 @@ def work():
         f.write(f"POMODORO START at {datetime.now()} \n {command = }")
     print("POMODORO START")
     Ogurec = Pomidor()
-    Ogurec.run()
+    session_type = os.environ.get('XDG_SESSION_TYPE')
+    if session_type == "x11":
+        Ogurec.run()
+    else:
+        sleep(10)
+        os.system("poweroff")
 
 def main():
     # return
