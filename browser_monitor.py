@@ -1,60 +1,68 @@
 import subprocess
 import time
-import os
-import signal
 
 # Настройки
-CHECK_INTERVAL = 1
-MAX_TIME_ON_SITE = 60
-BROWSER_PROCESS_NAME = "firefox" 
+CHECK_INTERVAL = 5          # секунды между проверками
+MAX_TIME_ALLOWED = 60       # секунд — лимит за один "сеанс"
+TELEGRAM_WM_CLASS = "telegramdesktop"   # в нижнем регистре, как мы приводим
 
-restricted_domains = {
-    "web.telegram.org": 0,
-    "youtube": 0,
-}
+ACCUMULATED_TIME = 0.0
 
-def get_active_window_title():
+def get_active_window_class():
+    """Возвращает WM_CLASS в нижнем регистре или ''"""
     try:
-        # Получаем ID активного окна
-        window_id = subprocess.check_output(["xdotool", "getactivewindow"]).decode().strip()
-        # Получаем заголовок окна
-        title = subprocess.check_output(["xprop", "-id", window_id, "_NET_WM_NAME"]).decode()
-        title = title.split('=')[1].strip().strip('"')  # Очищаем
-        return title
-    except Exception as e:
-        print(f"Ошибка получения заголовка: {e}")
-        return None
+        win_id = subprocess.check_output(["xdotool", "getactivewindow"]).decode().strip()
+        output = subprocess.check_output(["xprop", "-id", win_id, "WM_CLASS"]).decode()
+        parts = output.split('"')
+        if len(parts) >= 4:
+            class_name = parts[3].strip().lower()  # TelegramDesktop → telegramdesktop
+            return class_name
+        return ""
+    except Exception:
+        return ""
 
-def close_browser():
+def is_telegram_active():
+    cls = get_active_window_class()
+    return TELEGRAM_WM_CLASS in cls
+
+def close_telegram():
+    global ACCUMULATED_TIME
     try:
-        # Закрываем процесс браузера (можно заменить на закрытие окна через xdotool)
-        subprocess.run(["pkill", BROWSER_PROCESS_NAME])
-        print("Браузер закрыт из-за превышения времени.")
+        # Вариант 1: самый надёжный для Telegram Desktop на Linux
+        subprocess.run(["pkill", "-f", "tsetup.*Telegram/Telegram"], check=False)
+        
+        # Вариант 2: если не сработает — попробуй это (раскомментируй)
+        # subprocess.run(["killall", "-r", "telegram.*"], timeout=5)
+        
+        print(f"Telegram закрыт (накоплено {ACCUMULATED_TIME:.1f} сек)")
+    except subprocess.TimeoutExpired:
+        print("Закрытие Telegram зависло (timeout)")
     except Exception as e:
-        print(f"Ошибка закрытия браузера: {e}")
+        print("Ошибка при закрытии Telegram:", e)
 
-def one_loop():
-    current_title = get_active_window_title()
-    if current_title:
-        current_title = current_title.lower()
-        # Проверяем, содержит ли заголовок индикатор браузера (опционально)
-        if BROWSER_PROCESS_NAME in current_title:
-            for domain in restricted_domains:
-                if domain in current_title:
-                    restricted_domains[domain] += CHECK_INTERVAL
-                else:
-                    restricted_domains[domain] = max(0, restricted_domains[domain]-CHECK_INTERVAL)
-
-                if restricted_domains[domain] > MAX_TIME_ON_SITE:
-                    print(f"Время на сайте ({current_title}) превысило 5 минут. Закрываем.")
-                    close_browser()
-    time.sleep(CHECK_INTERVAL)
 def main():
+    global ACCUMULATED_TIME
+    print("Мониторинг Telegram Desktop запущен.")
+    print(f"Лимит: {MAX_TIME_ALLOWED} сек | Интервал: {CHECK_INTERVAL} сек")
+    print(f"Ожидаемый WM_CLASS (lower): {TELEGRAM_WM_CLASS}")
+
     while True:
-        one_loop()
+        if is_telegram_active():
+            ACCUMULATED_TIME += CHECK_INTERVAL
+            print(f"Telegram в фокусе → +{CHECK_INTERVAL} сек | всего {ACCUMULATED_TIME:.1f} сек")
+
+            if ACCUMULATED_TIME > MAX_TIME_ALLOWED:
+                print(f"Лимит превышен ({ACCUMULATED_TIME:.1f} сек) → закрываем")
+                close_telegram()
+        else:
+            if ACCUMULATED_TIME > 0:
+                ACCUMULATED_TIME = max(0, ACCUMULATED_TIME - CHECK_INTERVAL)
+                print(f"Telegram НЕ в фокусе → -{CHECK_INTERVAL} сек | осталось {ACCUMULATED_TIME:.1f} сек")
+
+        time.sleep(CHECK_INTERVAL)
 
 if __name__ == "__main__":
-    print("Мониторинг запущен. Нажмите Ctrl+C для остановки.")
-    main()
-
-
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nОстановлено пользователем.")
