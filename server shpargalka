@@ -1,0 +1,6 @@
+systemctl --user daemon-reload
+systemctl --user reset-failed
+systemctl --user restart tg-screenshot.service
+systemctl --user status tg-screenshot.service
+journalctl --user -u tg-screenshot.service -n 100 --no-pager
+~/.config/systemd/user/

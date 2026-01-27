@@ -78,6 +78,7 @@ class Pomidor:
     def system_break(self):
         if self.is_work:
             print("time to break")
+            os.system("sudo nmcli device disconnect enp11s0")
             self.is_work = False
             os.system(self.off_screen)
             sleep(4*60)
@@ -131,6 +132,7 @@ class Pomidor:
             else:
                 self.unblock_discord()            
             sleep(self.dt)
+            
 
     def block_discord(self):
         os.system("pkill -9 discord")
@@ -189,7 +191,7 @@ def work():
     if session_type == "x11":
         Ogurec.run()
     else:
-        sleep(10)
+        sleep(14)
         os.system("poweroff")
 
 def main():
