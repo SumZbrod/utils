@@ -6,53 +6,7 @@ from telethon import TelegramClient
 from PIL import Image
 import numpy as np
 import timm
-from torchvision import transforms
-import torch
 import time
-
-claster_cats=[
-    0,#0
-    0,#1
-    0,#2
-    1,#3
-    1,#4
-    1,#5
-    1,#6
-    0,#7
-    1,#8
-    1,#9
-]
-with open("/home/user/Files/utils/K_centrs.npy", 'rb') as f:
-    K_centrs = np.load(f)
-device = "cuda"
-
-model = timm.create_model(
-    "vit_base_patch14_dinov2",
-    pretrained=True,
-    num_classes=0
-).to(device).eval()
-
-transform = transforms.Compose([
-    transforms.Resize(518),
-    transforms.CenterCrop(518),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=(0.485, 0.456, 0.406),
-        std=(0.229, 0.224, 0.225),
-    ),
-])
-
-def embed_image(path):
-    img = Image.open(path).convert("RGB")
-    x = transform(img).unsqueeze(0).to(device)
-    with torch.no_grad():
-        return model(x).cpu().numpy()[0]
-
-def get_claster_cat(path):
-    p = embed_image(path)
-    argmin = int(np.argmin([np.linalg.norm(k - p) for k in K_centrs]))
-    return argmin, claster_cats[argmin]
-
 
 # ===== ENV =====
 api_id = int(os.getenv("TG_API_ID"))
@@ -150,8 +104,7 @@ async def main():
             await asyncio.sleep(60)  # короткая пауза, если ошибка
             continue
 
-        claster_id, screenshot_cat = get_claster_cat(screenshot)
-        caption = f"#{INCRIMINANT} | cat {screenshot_cat} | claster {claster_id}"
+        caption = f"#{INCRIMINANT}"
         INCRIMINANT += 1
         await client.send_file(channel_id, screenshot, caption=caption)
         os.remove(screenshot)
