@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {"ckpt_name": "sdxl.safetensors"}
+    },
+    {
+      "class_type": "IPAdapterApply",
+      "inputs": {
+        "clip_vision": ["CLIPVisionLoader", 0],
+        "ipadapter": ["IPAdapterModelLoader", 0],
+        "image": ["LoadImage", 0],
+        "weight": 0.6
+      }
+    },
+    {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": ["IPAdapterApply", 0],
+        "tiling": "XY",
+        "steps": 30,
+        "cfg": 7.0,
+        "denoise": 1.0
+      }
+    },
+    {
+      "class_type": "VAEDecodeTiled",
+      "inputs": {"samples": ["KSampler", 0]}
+    },
+    {
+      "class_type": "OffsetImage",
+      "inputs": {"image": ["VAEDecodeTiled", 0], "x": 0.5, "y": 0.5}
+    },
+    {
+      "class_type": "SaveImage",
+      "inputs": {"images": ["OffsetImage", 0]}
+    }
+  ]
+}

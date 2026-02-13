@@ -8,6 +8,7 @@ import numpy as np
 import timm
 from torchvision import transforms
 import torch
+import time
 
 claster_cats=[
     0,#0
@@ -21,7 +22,7 @@ claster_cats=[
     1,#8
     1,#9
 ]
-with open("K_centrs.npy", 'rb') as f:
+with open("/home/user/Files/utils/K_centrs.npy", 'rb') as f:
     K_centrs = np.load(f)
 device = "cuda"
 
@@ -50,7 +51,7 @@ def embed_image(path):
 def get_claster_cat(path):
     p = embed_image(path)
     argmin = int(np.argmin([np.linalg.norm(k - p) for k in K_centrs]))
-    return claster_cats[argmin]
+    return argmin, claster_cats[argmin]
 
 
 # ===== ENV =====
@@ -62,7 +63,7 @@ BASE_INTERVAL = 15 * 60
 RANDOM_SHIFT = 13 * 60
 SCREEN_PATH = "/tmp/tg_screen2.png"
 SESSION = os.environ.get("XDG_SESSION_TYPE", "x11")
-MIN_SCREENSHOT_SIZE = 100 * 1024   # 100 KB
+MIN_SCREENSHOT_SIZE = 10 * 1024   # 100 KB
 RETRY_DELAY = 5 * 60               # 5 минут
 
 client = TelegramClient(
@@ -130,38 +131,44 @@ def is_screenshot_valid(path):
 
     return True
 
-# ---------- MAIN ----------
+
 async def main():
     await client.start()
     INCRIMINANT = 0
     BREAK_MESSEAGE_ALREADY_SENTED = False
+
+    last_screenshot_time = time.time()
+
     while True:
         screenshot = make_screenshot()
         if not is_screenshot_valid(screenshot):
             if os.path.exists(screenshot):
                 os.remove(screenshot)
             if not BREAK_MESSEAGE_ALREADY_SENTED:
-                await client.send_message(
-                    channel_id,
-                    "Сейчас перерыв"
-                )
+                await client.send_message(channel_id, "Сейчас перерыв")
                 BREAK_MESSEAGE_ALREADY_SENTED = True
-            await asyncio.sleep(random.randint(0, RANDOM_SHIFT))
+            await asyncio.sleep(60)  # короткая пауза, если ошибка
             continue
-        screenshot_cat = get_claster_cat(screenshot)
-        caption = f"#{INCRIMINANT} | cat {screenshot_cat}"
-        INCRIMINANT += 1
-        await client.send_file(
-            channel_id,
-            screenshot,
-            caption=caption
-        )
 
+        claster_id, screenshot_cat = get_claster_cat(screenshot)
+        caption = f"#{INCRIMINANT} | cat {screenshot_cat} | claster {claster_id}"
+        INCRIMINANT += 1
+        await client.send_file(channel_id, screenshot, caption=caption)
         os.remove(screenshot)
 
         BREAK_MESSEAGE_ALREADY_SENTED = False
-        delay = BASE_INTERVAL +  RANDOM_SHIFT * (2*random.random()-1)**3
-        print("delay =", delay)
-        await asyncio.sleep(delay)
+
+        # ------------------- ВОТ КЛЮЧЕВОЙ МОМЕНТ -------------------
+        now = time.time()
+        elapsed = now - last_screenshot_time
+        target_interval = BASE_INTERVAL + RANDOM_SHIFT * (2 * random.random() - 1)**3
+
+        if elapsed >= target_interval:
+            # уже прошло достаточно времени (после долгого suspend) — делаем скрин сразу
+            last_screenshot_time = now
+        else:
+            sleep_needed = target_interval - elapsed
+            await asyncio.sleep(sleep_needed)
+            last_screenshot_time = time.time()
 
 asyncio.run(main())

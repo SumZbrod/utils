@@ -2,6 +2,22 @@ from datetime import datetime, timedelta
 import os
 from time import sleep
 import subprocess
+CUTOFF_HOUR = 19
+
+def disable_wired():
+    # отключает все проводные соединения
+    subprocess.run(
+        ["nmcli", "networking", "off"],
+        check=False
+    )
+
+def disable_wired_if_neted():
+    now = datetime.now()
+    return
+    print("[disable_wired_if_neted] now =", now)
+    if now.hour >= CUTOFF_HOUR:
+        disable_wired()
+
 
 class Pomidor:
     breaks_dict = {
@@ -116,21 +132,14 @@ class Pomidor:
         schedule = self.breaks_dict[self.what_day_type()]
         while True:
             for delta in schedule:
-                print(delta)
+                print(1, delta)
                 if self.is_break_time(delta):
                     self.system_break()
                     break
                 sleep(self.dt)
             else:
-                self.system_work()
-            for delta in self.discord_blocks:
-                print(delta)
-                if self.is_break_time(delta):
-                    self.block_discord()
-                    break
-                sleep(self.dt)
-            else:
-                self.unblock_discord()            
+                self.system_work()       
+            disable_wired_if_neted()
             sleep(self.dt)
             
 
