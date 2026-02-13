@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from telethon import TelegramClient
 from telethon.tl.types import InputPeerChannel
 from dotenv import load_dotenv
+import subprocess
 
 # Настройка логирования
 logging.basicConfig(
@@ -70,7 +71,8 @@ async def main():
                     trysef += 1
                     if trysef > 1:
                         logger.error(f"!!! Тишина {minutes_silent:.1f} мин → перезагрузка сервера")
-                        os.system("systemctl --user restart tg-screenshot.service")
+                        subprocess.run(["systemctl", "--user", "restart", "tg-screenshot.service"])
+                        trysef = 1
                     else:
                         logger.error(f"!!! Тишина {minutes_silent:.1f} мин → если она продолжится то через 5 минут перезагрузка")
                     # После этой команды система перезагрузится, цикл дальше не пойдёт
