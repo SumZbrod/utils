@@ -4,9 +4,8 @@ import random
 import subprocess
 from telethon import TelegramClient
 from PIL import Image
-import numpy as np
-import timm
 import time
+import socks
 
 # ===== ENV =====
 api_id = int(os.getenv("TG_API_ID"))
@@ -17,13 +16,16 @@ BASE_INTERVAL = 15 * 60
 RANDOM_SHIFT = 13 * 60
 SCREEN_PATH = "/tmp/tg_screen2.png"
 SESSION = os.environ.get("XDG_SESSION_TYPE", "x11")
-MIN_SCREENSHOT_SIZE = 10 * 1024   # 100 KB
+MIN_SCREENSHOT_SIZE = 50 * 1024   # 100 KB
 RETRY_DELAY = 5 * 60               # 5 минут
+SNAPSHOTS_PATH = '/home/user/Files/utils/snapshots/'
 
+proxy = (socks.SOCKS5, "127.0.0.1", 10808)
 client = TelegramClient(
-    "/home/user/Files/utils/session",
+    "/home/user/Files/utils/helsenki_session",
     api_id,
-    api_hash
+    api_hash,
+    proxy=proxy,
 )
 # ---------- SCREENSHOT ----------
 def make_screenshot():
@@ -39,42 +41,11 @@ def make_screenshot():
         )
     return SCREEN_PATH
 
-# ---------- WINDOWS ----------
-def get_windows_x11():
-    out = subprocess.check_output(["wmctrl", "-l"], text=True)
-    lines = out.strip().splitlines()
-    return "\n".join(line.split(None, 3)[-1] for line in lines)
-
-def get_windows_wayland():
-    out = subprocess.check_output([
-        "gdbus", "call",
-        "--session",
-        "--dest", "org.gnome.Shell",
-        "--object-path", "/org/gnome/Shell",
-        "--method", "org.gnome.Shell.Eval",
-        "global.get_window_actors().map(w => w.meta_window.get_title()).join('\\n')"
-    ], text=True)
-
-    return out.split("'", 2)[1] or "Нет окон"
-
-def get_open_windows():
-    return (
-        get_windows_wayland()
-        if SESSION == "wayland"
-        else get_windows_x11()
-    )
-
-
 def is_screenshot_valid(path):
-    # файл существует
     if not os.path.exists(path):
         return False
-
-    # проверка размера
     if os.path.getsize(path) < MIN_SCREENSHOT_SIZE:
         return False
-
-    # проверка разрешения (на всякий случай)
     try:
         with Image.open(path) as img:
             w, h = img.size
@@ -87,6 +58,7 @@ def is_screenshot_valid(path):
 
 
 async def main():
+    print("start main")
     await client.start()
     INCRIMINANT = 0
     BREAK_MESSEAGE_ALREADY_SENTED = False
@@ -94,6 +66,7 @@ async def main():
     last_screenshot_time = time.time()
 
     while True:
+        print("loop")
         screenshot = make_screenshot()
         if not is_screenshot_valid(screenshot):
             if os.path.exists(screenshot):
@@ -101,17 +74,21 @@ async def main():
             if not BREAK_MESSEAGE_ALREADY_SENTED:
                 await client.send_message(channel_id, "Сейчас перерыв")
                 BREAK_MESSEAGE_ALREADY_SENTED = True
+            print("screenshot not valid")
             await asyncio.sleep(60)  # короткая пауза, если ошибка
             continue
-
+        
         caption = f"#{INCRIMINANT}"
+        print(f"{caption = }")
         INCRIMINANT += 1
+        print("try send screenshot")
         await client.send_file(channel_id, screenshot, caption=caption)
+        print("send complited screenshot")
         os.remove(screenshot)
+
 
         BREAK_MESSEAGE_ALREADY_SENTED = False
 
-        # ------------------- ВОТ КЛЮЧЕВОЙ МОМЕНТ -------------------
         now = time.time()
         elapsed = now - last_screenshot_time
         target_interval = BASE_INTERVAL + RANDOM_SHIFT * (2 * random.random() - 1)**3
@@ -123,5 +100,6 @@ async def main():
             sleep_needed = target_interval - elapsed
             await asyncio.sleep(sleep_needed)
             last_screenshot_time = time.time()
+        
 
 asyncio.run(main())

@@ -23,6 +23,7 @@ def get_active_window_class():
 
 def is_telegram_active():
     cls = get_active_window_class()
+    print(f"{cls = }")
     return TELEGRAM_WM_CLASS in cls
 
 def close_telegram():

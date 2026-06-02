@@ -44,7 +44,7 @@ class Pomidor:
             ("15:50", "16:00"),
             ("16:30", "17:00"),
             ("17:50", "18:00"),
-            ("18:30", "19:00"),
+            ("18:30", "18:55"),
         ],
     }
     discord_blocks = [
@@ -191,16 +191,16 @@ def text_schelder():
     Ogurec.make_break_schelder()
 
 def work():
-    command = test_swaymsg()
-    with open('/home/user/Files/utils/log', 'w') as f:
-        f.write(f"POMODORO START at {datetime.now()} \n {command = }")
+    # command = test_swaymsg()
+    # with open('/home/user/Files/utils/log', 'w') as f:
+    #     f.write(f"POMODORO START at {datetime.now()} \n {command = }")
     print("POMODORO START")
     Ogurec = Pomidor()
     session_type = os.environ.get('XDG_SESSION_TYPE')
     if session_type == "x11":
         Ogurec.run()
     else:
-        sleep(14)
+        sleep(60*60*2)
         os.system("poweroff")
 
 def main():
